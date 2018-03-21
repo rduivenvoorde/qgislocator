@@ -1,0 +1,35 @@
+# This file contains metadata for your plugin. Since 
+# version 2.0 of QGIS this is the proper way to supply 
+# information about a plugin. The old method of 
+# embedding metadata in __init__.py will 
+# is no longer supported since version 2.0.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=QgisLocator
+qgisMinimumVersion=3.0
+description=This plugins can be used to connect the QgsLocator search bar to Geocoder services
+version=0.1
+author=Zuidt
+email=richard@zuidt.nl
+
+# Tags are comma separated with spaces allowed
+tags=geocoder,qlocator,pdok locatieserver, google, nominatim
+
+tracker=https://github.com/rduivenvoorde/qgislocatorplugin
+homepage=https://github.com/rduivenvoorde/qgislocatorplugin
+repository=https://github.com/rduivenvoorde/qgislocatorplugin
+
+# Uncomment the following line and add your changelog:
+changelog=
+    0.1.1       fix for api changes
+    0.1.0       initial public release
+
+category=Web
+
+# experimental flag
+experimental=False
+
+# change icon...
+icon=icons/icon.png
