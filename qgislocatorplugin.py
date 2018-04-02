@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtCore import QUrl
+from qgis.PyQt.QtGui import QIcon, QDesktopServices
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
-
-from qgis.core import QgsProject, QgsLocator, QgsLocatorFilter, QgsLocatorResult, \
-                      QgsRectangle, QgsPoint, QgsPointXY, QgsCoordinateReferenceSystem, QgsCoordinateTransform
-
-from .networkaccessmanager import NetworkAccessManager, RequestsException
-
+from qgis.core import QgsApplication
 from .locatorfilters import googlegeocoder, googleplaces, nominatim, pdoklocatieserver
 
-import json
-
+import os
 
 # QUESTION: should we create base classes for the GeocoderLocator and GeocoderFilter (in cpp or python)
 # QUESTION: IF a service does not have a suggest-service (like Nominatim) adding a space ' ' at the end to force a search
@@ -46,33 +41,60 @@ class QgisLocator:
         self.filter = nominatim.NominatimFilter(self.iface)
         self.iface.registerLocatorFilter(self.filter)
 
-        self.filter2 = pdoklocatieserver.PdokFilter(self.iface)
-        self.iface.registerLocatorFilter(self.filter2)
+        self.pdok_filter = pdoklocatieserver.PdokFilter(self.iface)
+        self.iface.registerLocatorFilter(self.pdok_filter)
 
-        self.filter3 = googleplaces.GooglePlacesFilter(self.iface)
-        self.iface.registerLocatorFilter(self.filter3)
+        self.google_geocode_filter = googlegeocoder.GoogleGeocodeFilter(self.iface)
+        self.iface.registerLocatorFilter(self.google_geocode_filter)
 
-        self.filter4 = googlegeocoder.GoogleGeocodeFilter(self.iface)
-        self.iface.registerLocatorFilter(self.filter4)
+        #self.google_places_filter = googleplaces.GooglePlacesFilter(self.iface)
+        #self.iface.registerLocatorFilter(self.google_places_filter)
 
     def initGui(self):
-
-        # about
-        self.aboutAction = QAction(QIcon("icons/icon.png"), "About", self.iface.mainWindow())
-        self.aboutAction.setWhatsThis("QGIS Locator Plugin")
+        # about action
+        self.aboutAction = QAction(QIcon(os.path.join(os.path.dirname(__file__), "icons", "icon.svg")),
+                                  self.tr("About"), self.iface.mainWindow())
+        self.aboutAction.setWhatsThis(self.tr("QGIS Locator Plugin"))
         self.aboutAction.triggered.connect(self.about)
-        self.iface.addPluginToWebMenu("QGIS &Locator Plugin", self.aboutAction)
+        # help/documentation action
+        help_icon = QgsApplication.getThemeIcon('/mActionHelpContents.svg')
+        self.helpAction = QAction(help_icon, self.tr("Help"), self.iface.mainWindow())
+        self.helpAction.setWhatsThis(self.tr("QGIS Locator Plugin Documentation"))
+        self.helpAction.triggered.connect(self.show_help)
+        # add about to plugin menu
+        self.iface.addPluginToWebMenu(self.tr("QGIS &Locator Plugin"), self.helpAction)
+        self.iface.addPluginToWebMenu(self.tr("QGIS &Locator Plugin"), self.aboutAction)
 
     def unload(self):
         self.iface.deregisterLocatorFilter(self.filter)
-        self.iface.deregisterLocatorFilter(self.filter2)
-        self.iface.deregisterLocatorFilter(self.filter3)
-        self.iface.deregisterLocatorFilter(self.filter4)
+        self.iface.deregisterLocatorFilter(self.pdok_filter)
+        self.iface.deregisterLocatorFilter(self.google_geocode_filter)
+        #self.iface.deregisterLocatorFilter(self.google_places_filter)
         # Remove the web menu item and icon
-        self.iface.removePluginWebMenu("QGIS &Locator Plugin", self.aboutAction)
+        self.iface.removePluginWebMenu(self.tr("QGIS &Locator Plugin"), self.helpAction)
+        self.iface.removePluginWebMenu(self.tr("QGIS &Locator Plugin"), self.aboutAction)
 
     def about(self):
-        infoString =  "Written by Richard Duivenvoorde\nEmail - richard@duif.net\n"
-        infoString += "Company - Zuidt - http://www.zuidt.nl\n"
-        infoString += "Source: https://github.com/rduivenvoorde/qgislocator"
-        QMessageBox.information(self.iface.mainWindow(), "QGIS Locator Plugin About", infoString)
+        infoString = self.tr("Written by Richard Duivenvoorde\nEmail - richard@duif.net\n")
+        infoString += self.tr("Company - Zuidt - https://www.zuidt.nl\n")
+        infoString += self.tr("Source: https://github.com/rduivenvoorde/qgislocator")
+        QMessageBox.information(self.iface.mainWindow(), self.tr("QGIS Locator Plugin About"), infoString)
+
+    def show_help(self):
+        docs = os.path.join(os.path.dirname(__file__), "help", "index.html")
+        QDesktopServices.openUrl(QUrl("file:" + docs))
+
+    # noinspection PyMethodMayBeStatic
+    def tr(self, message):
+        """Get the translation for a string using Qt translation API.
+
+        We implement this ourselves since we do not inherit QObject.
+
+        :param message: String for translation.
+        :type message: str, QString
+
+        :returns: Translated version of message.
+        :rtype: QString
+        """
+        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
+        return QgsApplication.translate('QGIS Locator Plugin', message)

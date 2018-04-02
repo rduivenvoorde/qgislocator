@@ -1,6 +1,7 @@
 import json
-from qgis.core import QgsProject, QgsLocatorResult, QgsRectangle, QgsCoordinateReferenceSystem, QgsCoordinateTransform
+from qgis.core import QgsProject, QgsLocatorResult, QgsRectangle, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsSettings
 from .basefilter import GeocoderFilter
+from .base_api_key_dialog import BaseApiKeyDialog
 from ..networkaccessmanager import RequestsException
 
 
@@ -8,19 +9,17 @@ class GooglePlacesFilter(GeocoderFilter):
 
     def __init__(self, iface):
         super().__init__(iface)
-        # TODO come from UI
-        self.key = None
-        #self.google_config = GoogleLocatorConfig(self.iface.mainWindow())
-        self.google_config = None #GoogleLocatorConfig()
+        # setting the key name to use for the Google Geocode key
+        self.settings_key = '/qgisGeoLocator/qooglePlacesFilter/qoogleKey'
 
     def clone(self):
         return GooglePlacesFilter(self.iface)
 
     def displayName(self):
-        if self.key is None:
-            return 'Google Places Api needs a KEY first, see Configure'
-        else:
+        if self.settings.contains(self.settings_key, QgsSettings.Plugins):
             return 'Google Places Api (end with space to search)'
+        else:
+            return 'Google Places Api needs a KEY first, see Configure'
 
     def prefix(self):
         return 'gapi'
@@ -29,35 +28,33 @@ class GooglePlacesFilter(GeocoderFilter):
         return True
 
     def openConfigWidget(self, parent=None):
-        print('WIDGET WIDGET')
-        self.google_config.show()
+        # parent of the google config dialog should actually be the locatortab in the options dialog
+        # but dunno how to get a handle to it easily
+        google_config = BaseApiKeyDialog(self.iface.mainWindow())
+        # to be able to see the config, we need to search for a QgsLocatorOptionsWidget ?
+        #notworking self.google_config.activateWindow()
+        #notworking self.google_config.raise_()
 
-    # # /**
-    # #  * Returns true if the filter should be used when no prefix
-    # #  * is entered.
-    # #  * \see setUseWithoutPrefix()
-    # #  */
-    #def useWithoutPrefix(self):
-    #    return True
+        # check for Google key, if available prefill dialog
+        google_config.le_geocoding_api_key.setText(self.settings.value(self.settings_key, defaultValue='', type=str, section=QgsSettings.Plugins))
+
+        google_config.show()
+        # Run the dialog event loop
+        result = google_config.exec_()
+        # See if OK was pressed
+        if result:
+            key = google_config.le_geocoding_api_key.text()
+            if len(key) > 0:
+                self.settings.setValue(self.settings_key, key, QgsSettings.Plugins)
 
     def fetchResults(self, search, context, feedback):
-
-        # emit resultFetched() signal
-        #  /**
-        #  * Retrieves the filter results for a specified search \a string. The \a context
-        #  * argument encapsulates the context relating to the search (such as a map
-        #  * extent to prioritize).
-        #  *
-        #  * Implementations of fetchResults() should emit the resultFetched()
-        #  * signal whenever they encounter a matching result.
-        #  *
-        #  * Subclasses should periodically check the \a feedback object to determine
-        #  * whether the query has been canceled. If so, the subclass should return
-        #  * this method as soon as possible.
-        #  */
-
-
-        if self.key is None:
+        key = self.settings.value(self.settings_key, defaultValue='', type=str, section=QgsSettings.Plugins)
+        self.info('KEY: "{}" self: {}'.format(key, self))
+        if key == '':
+            result = QgsLocatorResult()
+            result.filter = self
+            result.displayString = self.displayName()
+            self.resultFetched.emit(result)
             return
 
         if len(search) < 3:
@@ -65,36 +62,26 @@ class GooglePlacesFilter(GeocoderFilter):
 
         search = search.strip()
 
-        # Google geocoding api
-        # https://developers.google.com/maps/documentation/geocoding/get-api-key
-        # https://developers.google.com/maps/documentation/geocoding/usage-limits  # 2500 requests per day
-#        url = 'https://maps.googleapis.com/maps/api/geocode/json?key={}&address={}'.format(self.key, search)
-        # https://maps.googleapis.com/maps/api/geocode/json?types=geocode&key=AIzaSyCSnHVDNVTboIagNdfbQLt2howajtzx8wM&address=2022zj
-
-        # https://developers.google.com/places/web-service/query
-
         # Google places api
+        # https://developers.google.com/places/web-service/query
+        # https://developers.google.com/places/web-service/get-api-key
         # https://developers.google.com/places/web-service/usage  # 1000 requests per day
-        url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?types=geocode&key={}&input={}'.format(self.key, search)
-        #url = 'https://maps.googleapis.com/maps/api/place/queryautocomplete/json?types=geocode&key={}&input={}'.format(self.key, search)
-        # https://maps.googleapis.com/maps/api/place/autocomplete/json?types=geocode&key=AIzaSyCSnHVDNVTboIagNdfbQLt2howajtzx8wM&input=2022zj
-
+        url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?types=geocode&key={}&input={}'.format(key, search)
 
         try:
-            print('url: {}'.format(url))
+            self.info('{}'.format(url))
             (response, content) = self.nam.request(url)
-            ##print('response: {}'.format(response))
             # TODO: check statuscode etc
-            print('content: {}'.format(content))
-
+            #  see https://developers.google.com/places/web-service/search#PlaceSearchResponses for Google status codes
+            #self.info('{}'.format(response))
             content_string = content.decode('utf-8')
             obj = json.loads(content_string)
 
             docs = obj['predictions']
             for doc in docs:
-                ##print(doc)
                 result = QgsLocatorResult()
                 result.filter = self
+                self.info('{}'.format(doc['description']))
                 result.displayString = '{} ({})'.format(doc['description'], doc['types'])
                 result.userData = doc
                 self.resultFetched.emit(result)
@@ -103,22 +90,26 @@ class GooglePlacesFilter(GeocoderFilter):
             # Handle exception
             print('!!!!!!!!!!! EXCEPTION !!!!!!!!!!!!!: \n{}'. format(RequestsException.args))
 
-
-    # /**
-    #  * Triggers a filter \a result from this filter. This is called when
-    #  * one of the results obtained by a call to fetchResults() is triggered
-    #  * by a user. The filter subclass must implement logic here
-    #  * to perform the desired operation for the search result.
-    #  * E.g. a file search filter would open file associated with the triggered
-    #  * result.
-    #  */
-    # virtual void triggerResult( const QgsLocatorResult &result ) = 0;
     def triggerResult(self, result):
 
         # now try to use Google geocoding service to retrieve more/spatial information
         doc = result.userData
-        search = doc[0][description]
-        types = doc[0][description]
+        self.info(doc)
+        #self.info(doc)
+
+        # bounds = None
+        # if doc is not None and 'geometry' in doc:
+        #     g = doc['geometry']
+        #     if 'bounds' in g:
+        #         bounds = g['bounds']
+        #     if 'location' in g:
+        #         location = g['location']
+        #     if 'viewport' in g:
+        #         viewport = g['viewport']
+        #
+        #     location_type = doc['geometry']['location_type']
+        #     self.info(location_type)
+
 
         # TODO
 

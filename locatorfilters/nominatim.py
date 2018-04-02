@@ -67,8 +67,8 @@ class NominatimFilter(GeocoderFilter):
         # stripping the search string here to be able to see two geocoders at once and Nominatim needs a space on the end
         #search = search.strip()
         url = 'http://nominatim.openstreetmap.org/search?format=json&q={}'.format(search)
-        print('Nominatim search: {}'.format(url))
         try:
+            self.info('{}'.format(url))
             # TODO: Provide a valid HTTP Referer or User-Agent identifying the application (QGIS geocoder)
             # see https://operations.osmfoundation.org/policies/nominatim/
             (response, content) = self.nam.request(url)

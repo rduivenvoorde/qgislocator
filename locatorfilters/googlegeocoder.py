@@ -10,7 +10,7 @@ class GoogleGeocodeFilter(GeocoderFilter):
 
     def __init__(self, iface):
         super().__init__(iface)
-        self.settings = QgsSettings()
+        # setting the key name to use for the Google Geocode key
         self.settings_key = '/qgisGeoLocator/qoogleGeocodeFilter/qoogleKey'
 
     def clone(self):
@@ -48,43 +48,15 @@ class GoogleGeocodeFilter(GeocoderFilter):
             if len(key) > 0:
                 self.settings.setValue(self.settings_key, key, QgsSettings.Plugins)
 
-
-
-
-    # # /**
-    # #  * Returns true if the filter should be used when no prefix
-    # #  * is entered.
-    # #  * \see setUseWithoutPrefix()
-    # #  */
-    #def useWithoutPrefix(self):
-    #    return True
-
     def fetchResults(self, search, context, feedback):
-
-        # emit resultFetched() signal
-        #  /**
-        #  * Retrieves the filter results for a specified search \a string. The \a context
-        #  * argument encapsulates the context relating to the search (such as a map
-        #  * extent to prioritize).
-        #  *
-        #  * Implementations of fetchResults() should emit the resultFetched()
-        #  * signal whenever they encounter a matching result.
-        #  *
-        #  * Subclasses should periodically check the \a feedback object to determine
-        #  * whether the query has been canceled. If so, the subclass should return
-        #  * this method as soon as possible.
-        #  */
-        # value(self, key, defaultValue=None, type=0, section=None)
         key = self.settings.value(self.settings_key, defaultValue='', type=str, section=QgsSettings.Plugins)
-        self.info('fetchResults KEY: "{}" self: {}'.format(key, self))
+        # self.info('fetchResults KEY: "{}" self: {}'.format(key, self))
         if key == '':
             result = QgsLocatorResult()
             result.filter = self
             result.displayString = self.displayName()
             self.resultFetched.emit(result)
             return
-        else:
-            self.info("TOCH DOOR: {}".format(key))
 
         if len(search) < 3:
             return
@@ -95,30 +67,17 @@ class GoogleGeocodeFilter(GeocoderFilter):
         # https://developers.google.com/maps/documentation/geocoding/get-api-key
         # https://developers.google.com/maps/documentation/geocoding/usage-limits  # 2500 requests per day
         url = 'https://maps.googleapis.com/maps/api/geocode/json?key={}&address={}'.format(key, search)
-        # https://maps.googleapis.com/maps/api/geocode/json?types=geocode&key=AIzaSyCSnHVDNVTboIagNdfbQLt2howajtzx8wM&address=2022zj
-
-        # https://developers.google.com/places/web-service/query
-
-        # Google places api
-        # https://developers.google.com/places/web-service/usage  # 1000 requests per day
-#        url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?types=geocode&key={}&input={}'.format(self.key, search)
-        #url = 'https://maps.googleapis.com/maps/api/place/queryautocomplete/json?types=geocode&key={}&input={}'.format(self.key, search)
-        # https://maps.googleapis.com/maps/api/place/autocomplete/json?types=geocode&key=AIzaSyCSnHVDNVTboIagNdfbQLt2howajtzx8wM&input=2022zj
-
 
         try:
-            self.info('Firing url: {}'.format(url))
+            self.info('{}'.format(url))
             (response, content) = self.nam.request(url)
-            ##print('response: {}'.format(response))
             # TODO: check statuscode etc
-            #print('content: {}'.format(content))
 
             content_string = content.decode('utf-8')
             obj = json.loads(content_string)
 
             docs = obj['results']
             for doc in docs:
-                ##print(doc)
                 result = QgsLocatorResult()
                 result.filter = self
                 result.displayString = '{} ({})'.format(doc['formatted_address'], doc['types'])
@@ -130,15 +89,6 @@ class GoogleGeocodeFilter(GeocoderFilter):
             print('!!!!!!!!!!! EXCEPTION !!!!!!!!!!!!!: \n{}'. format(RequestsException.args))
 
 
-    # /**
-    #  * Triggers a filter \a result from this filter. This is called when
-    #  * one of the results obtained by a call to fetchResults() is triggered
-    #  * by a user. The filter subclass must implement logic here
-    #  * to perform the desired operation for the search result.
-    #  * E.g. a file search filter would open file associated with the triggered
-    #  * result.
-    #  */
-    # virtual void triggerResult( const QgsLocatorResult &result ) = 0;
     def triggerResult(self, result):
 
         doc = result.userData

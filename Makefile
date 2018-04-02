@@ -26,33 +26,31 @@
 #Add iso code for any locales you want to support here (space separated)
 # default is no locales
 # LOCALES = af
-LOCALES =
+LOCALES = nl
+
+VERSION=$(shell cat metadata.txt | grep version= | sed -e 's,version=,,')
 
 # If locales are enabled, set the name of the lrelease binary on your system. If
 # you have trouble compiling the translations, you may have to specify the full path to
 # lrelease
-#LRELEASE = lrelease
-#LRELEASE = lrelease-qt4
-
+LRELEASE = lrelease
 
 # translation
 SOURCES = \
 	__init__.py \
 	qgislocatorplugin.py networkaccessmanager.py \
-	locatorfilters/* \
+	locatorfilters \
 
 PLUGINNAME = qgislocator
 
 PY_FILES = \
 	__init__.py \
 	qgislocatorplugin.py networkaccessmanager.py \
-	locatorfilters/* \
+	locatorfilters \
 
-UI_FILES = locatorfilters/base_api_key_dialog.ui
+UI_FILES = locatorfilters
 
-EXTRAS = metadata.txt icons/icon.png
-
-EXTRA_DIRS =
+EXTRAS = metadata.txt
 
 COMPILED_RESOURCE_FILES = resources.py
 
@@ -99,22 +97,20 @@ test: compile transcompile
 
 deploy: compile doc transcompile
 	@echo
-	@echo "------------------------------------------"
-	@echo "Deploying plugin to your .qgis2 directory."
-	@echo "------------------------------------------"
+	@echo "--------------------------------------------------------"
+	@echo "Deploying plugin to your qgis3/python/plugins directory."
+	@echo "--------------------------------------------------------"
 	# The deploy  target only works on unix like operating system where
 	# the Python plugin directory is located at:
 	# $HOME/$(QGISDIR)/python/plugins
 	mkdir -p $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
-	cp -vf $(PY_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
-	cp -vf $(UI_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
+	cp -vfr $(PY_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
+	cp -vfr $(UI_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vf $(COMPILED_RESOURCE_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vf $(EXTRAS) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
+	cp -vfr icons $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vfr i18n $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vfr $(HELP) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/help
-	# Copy extra directories if any
-	(foreach EXTRA_DIR,(EXTRA_DIRS), cp -R (EXTRA_DIR) (HOME)/(QGISDIR)/python/plugins/(PLUGINNAME)/;)
-
 
 # The dclean target removes compiled python files from plugin directory
 # also deletes any .git entry
@@ -126,7 +122,6 @@ dclean:
 	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname "*.pyc" -delete
 	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname ".git" -prune -exec rm -Rf {} \;
 
-
 derase:
 	@echo
 	@echo "-------------------------"
@@ -134,50 +129,27 @@ derase:
 	@echo "-------------------------"
 	rm -Rf $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 
-zip: deploy dclean
+zip: desymlink deploy dclean
 	@echo
 	@echo "---------------------------"
 	@echo "Creating plugin zip bundle."
+	@echo "Version: $(VERSION)"
 	@echo "---------------------------"
 	# The zip target deploys the plugin and creates a zip file with the deployed
 	# content. You can then upload the zip file on http://plugins.qgis.org
-	rm -f $(PLUGINNAME).zip
-	cd $(HOME)/$(QGISDIR)/python/plugins; zip -9r $(CURDIR)/$(PLUGINNAME).zip $(PLUGINNAME)
+	rm -f $(PLUGINNAME)*.zip
+	cd $(HOME)/$(QGISDIR)/python/plugins; zip -9r $(CURDIR)/$(PLUGINNAME)_$(VERSION).zip $(PLUGINNAME)
 
 # Create a symlink for development in the default profile python plugins dir
 symlink:
 	mkdir -p $(HOME)/$(QGISDIR)/python/plugins
+	# in case there is a deployed version: remove it
+	rm -rf $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	ln -s `pwd` $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 
 # Remove the created symlink
 desymlink:
-	rm $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
-
-# Create a zip package of the plugin named $(PLUGINNAME).zip. 
-# This requires use of git (your plugin development directory must be a 
-# git repository).
-# To use, pass a valid commit or tag as follows:
-#   make package VERSION=Version_0.3.3
-package: compile
-	# Create a zip package of the plugin named $(PLUGINNAME).zip.
-	# This requires use of git (your plugin development directory must be a
-	# git repository).
-	# To use, pass a valid commit or tag as follows:
-	#   make package VERSION=Version_0.3.2
-	@echo
-	@echo "------------------------------------"
-	@echo "Exporting plugin to zip package.	"
-	@echo "------------------------------------"
-	rm -f $(PLUGINNAME).zip
-	git archive --prefix=$(PLUGINNAME)/ -o $(PLUGINNAME).zip $(VERSION)
-	echo "Created package: $(PLUGINNAME).zip"
-
-upload: zip
-	@echo
-	@echo "-------------------------------------"
-	@echo "Uploading plugin to QGIS Plugin repo."
-	@echo "-------------------------------------"
-	$(PLUGIN_UPLOAD) $(PLUGINNAME).zip
+	rm -Rf $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 
 transup:
 	@echo

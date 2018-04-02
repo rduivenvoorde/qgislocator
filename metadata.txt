@@ -10,8 +10,8 @@
 name=QgisLocator
 qgisMinimumVersion=3.0
 description=This plugins can be used to connect the QgsLocator search bar to Geocoder services
-version=0.1
-author=Zuidt
+version=0.1.1
+author=Richard Duivenvoorde, Zuidt
 email=richard@zuidt.nl
 
 # Tags are comma separated with spaces allowed
@@ -32,4 +32,4 @@ category=Web
 experimental=False
 
 # change icon...
-icon=icons/icon.png
+icon=icons/icon.svg

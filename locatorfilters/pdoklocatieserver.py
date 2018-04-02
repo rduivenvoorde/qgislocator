@@ -8,56 +8,24 @@ class PdokFilter(GeocoderFilter):
 
     def __init__(self, iface):
         super().__init__(iface)
-        #print('constructor PdokFilter')
-
-    # def name(self):
-    #     #print('Calling name() van PdokFilter')
-    #     return 'PdokFilter'
 
     def clone(self):
         return PdokFilter(self.iface)
 
     def displayName(self):
-        ##print('Calling displayName() van PdokFilter')
-        return 'PDOK Locatieserver'
+        return self.tr('PDOK Locatieserver')
 
     def prefix(self):
-        ##print('Calling prefix() van PdokFilter')
         return 'pdok'
 
-    # def hasConfigWidget(self):
-    #     return False
-    #
-    # # /**
-    # #  * Returns true if the filter should be used when no prefix
-    # #  * is entered.
-    # #  * \see setUseWithoutPrefix()
-    # #  */
-    # def useWithoutPrefix(self):
-    #     return False
-
     def fetchResults(self, search, context, feedback):
-        # emit resultFetched() signal
-        #  /**
-        #  * Retrieves the filter results for a specified search \a string. The \a context
-        #  * argument encapsulates the context relating to the search (such as a map
-        #  * extent to prioritize).
-        #  *
-        #  * Implementations of fetchResults() should emit the resultFetched()
-        #  * signal whenever they encounter a matching result.
-        #  *
-        #  * Subclasses should periodically check the \a feedback object to determine
-        #  * whether the query has been canceled. If so, the subclass should return
-        #  * this method as soon as possible.
-        #  */
-
         ##print('--- PdokFilter fetchResults called')
         ##print('PdokFilter search: {}'.format(search))
         ##print('PdokFilter context: {}'.format(context))
         #print('PdokFilter context.targetExtent: {}'.format(context.targetExtent))
         #print('PdokFilter context.targetExtentCrs: {}'.format(context.targetExtentCrs))
         ##print('PdokFilter feedback: {}'.format(feedback))
-
+        self.info(self.tr)
         if len(search) < 3:
             return
 
@@ -65,6 +33,7 @@ class PdokFilter(GeocoderFilter):
         search = search.strip()
         url = 'https://geodata.nationaalgeoregister.nl/locatieserver/v3/suggest?q={}'.format(search)
         try:
+            self.info('{}'.format(url))
             (response, content) = self.nam.request(url)
             ##print('response: {}'.format(response))
             # TODO: check statuscode etc
@@ -86,15 +55,6 @@ class PdokFilter(GeocoderFilter):
             print('!!!!!!!!!!! EXCEPTION !!!!!!!!!!!!!: \n{}'. format(RequestsException.args))
 
 
-    # /**
-    #  * Triggers a filter \a result from this filter. This is called when
-    #  * one of the results obtained by a call to fetchResults() is triggered
-    #  * by a user. The filter subclass must implement logic here
-    #  * to perform the desired operation for the search result.
-    #  * E.g. a file search filter would open file associated with the triggered
-    #  * result.
-    #  */
-    # virtual void triggerResult( const QgsLocatorResult &result ) = 0;
     def triggerResult(self, result):
         #print('PdokFilter triggerResult called-----')
         ##print(result.displayString)
