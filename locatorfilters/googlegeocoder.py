@@ -29,17 +29,18 @@ class GoogleGeocodeFilter(GeocoderFilter):
         return True
 
     def openConfigWidget(self, parent=None):
+        self.info('parent: {}'.format(parent))
         # parent of the google config dialog should actually be the locatortab in the options dialog
         # but dunno how to get a handle to it easily
-        google_config = BaseApiKeyDialog(self.iface.mainWindow())
+        google_config = BaseApiKeyDialog(parent)
         # to be able to see the config, we need to search for a QgsLocatorOptionsWidget ?
-        #notworking self.google_config.activateWindow()
-        #notworking self.google_config.raise_()
+        google_config.raise_()
+        google_config.activateWindow()
 
         # check for Google key, if available prefill dialog
         google_config.le_geocoding_api_key.setText(self.settings.value(self.settings_key, defaultValue='', type=str, section=QgsSettings.Plugins))
 
-        google_config.show()
+        #google_config.show()
         # Run the dialog event loop
         result = google_config.exec_()
         # See if OK was pressed
