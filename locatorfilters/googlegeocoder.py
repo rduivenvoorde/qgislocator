@@ -94,6 +94,7 @@ class GoogleGeocodeFilter(GeocoderFilter):
 
         doc = result.userData
         bounds = None
+        viewport = None
         if doc is not None and 'geometry' in doc:
             g = doc['geometry']
             if 'bounds' in g:
